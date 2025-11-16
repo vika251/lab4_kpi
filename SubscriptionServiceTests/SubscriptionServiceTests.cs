@@ -149,6 +149,41 @@ namespace SubscriptionServiceTests
             _repo.Verify(r => r.Update(It.IsAny<Member>()), Times.Never());
             _notify.Verify(n => n.SendNotification(It.IsAny<string>(), It.IsAny<int>()), Times.Never());
         }
+
+        /// <summary>
+        /// Перевіряє, що деактивовано ВСІХ учасників з простроченою підпискою,
+        /// якщо їх декілька.
+        /// </summary>
+        [Fact]
+        public void DeactivateExpiredMembers_ShouldDeactivateAllExpiredMembers_WhenMultipleExist()
+        {
+            // Arrange
+            var expiredMember1 = new Member { Id = 1, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(-1) };
+            var expiredMember2 = new Member { Id = 2, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(-5) };
+            var activeMember = new Member { Id = 3, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(30) };
+            
+            var allMembers = new List<Member> { expiredMember1, expiredMember2, activeMember };
+
+            _repo.Setup(r => r.GetAll()).Returns(allMembers);
+            
+            var service = new SubscriptionService(_repo.Object, _payment.Object, _notify.Object);
+
+            // Act
+            service.DeactivateExpiredMembers();
+
+            // Assert
+            // Перевіряємо, що обидва прострочені учасники деактивовані
+            Assert.False(expiredMember1.IsActive);
+            Assert.False(expiredMember2.IsActive);
+            // ...а активний учасник залишився активним
+            Assert.True(activeMember.IsActive);
+
+            // Перевіряємо, що Update був викликаний рівно 2 рази
+            _repo.Verify(r => r.Update(It.Is<Member>(m => m.IsActive == false)), Times.Exactly(2));
+
+            // Перевіряємо, що сповіщення було надіслано рівно 2 рази
+            _notify.Verify(n => n.SendNotification("Membership expired", It.IsAny<int>()), Times.Exactly(2));
+        }
     }
 
 }
