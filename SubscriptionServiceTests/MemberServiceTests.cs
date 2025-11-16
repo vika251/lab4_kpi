@@ -18,43 +18,27 @@ namespace SubscriptionServiceTests
         private readonly Mock<INotificationService> _notify = new(); 
 
         /// <summary>
-        /// Перевіряє, що метод IsActive повертає true,
-        /// якщо учасник існує в репозиторії та має статус IsActive = true.
+        /// Перевіряє метод IsActive з різними вхідними даними.
+        /// Має повертати 'expectedResult' (true/false) залежно від статусу 'isActive'.
         /// </summary>
-        [Fact]
-        public void IsActive_ShouldReturnTrue_WhenMemberIsActive()
-        {
-            // Arrange 
-            var member = new Member { Id = 1, IsActive = true };
-            _repo.Setup(r => r.GetById(1)).Returns(member);
-
-            var service = new MemberService(_repo.Object);
-
-            // Act 
-            var result = service.IsActive(1);
-
-            // Assert 
-            Assert.True(result);
-        }
-
-        /// <summary>
-        /// Перевіряє, що метод IsActive повертає false,
-        /// якщо учасник існує, але має статус IsActive = false.
-        /// </summary>
-        [Fact]
-        public void IsActive_ShouldReturnFalse_WhenMemberIsInactive()
+        [Theory] 
+        [InlineData(1, true, true)]  // Сценарій 1: Учасник 1 активний, очікуємо true
+        [InlineData(2, false, false)] // Сценарій 2: Учасник 2 неактивний, очікуємо false
+        [InlineData(99, null, false)] // Сценарій 3: Учасник 99 не існує, очікуємо false
+        public void IsActive_ShouldReturnCorrectStatus_BasedOnMemberState(int memberId, bool? isActive, bool expectedResult)
         {
             // Arrange
-            var member = new Member { Id = 2, IsActive = false };
-            _repo.Setup(r => r.GetById(2)).Returns(member);
+            Member? member = isActive.HasValue ? new Member { Id = memberId, IsActive = isActive.Value } : null;
 
+            _repo.Setup(r => r.GetById(memberId)).Returns(member);
+            
             var service = new MemberService(_repo.Object);
 
             // Act
-            var result = service.IsActive(2);
+            var actualResult = service.IsActive(memberId);
 
             // Assert
-            Assert.False(result); 
+            Assert.Equal(expectedResult, actualResult);
         }
 
         /// <summary>
