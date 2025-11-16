@@ -19,6 +19,11 @@ namespace Subscription_Service.Services
             var member = _repo.GetById(id);
             return member?.IsActive ?? false;
         }
-    }
 
+        public IEnumerable<Member> GetAllActiveMembers()
+        {
+            return _repo.GetAll().Where(m => m.IsActive);
+        }
+
+    }
 }
