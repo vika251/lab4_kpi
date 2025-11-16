@@ -83,5 +83,72 @@ namespace SubscriptionServiceTests
             // Ми перевіряємо, що при виклику сервісу буде кинуто саме ArgumentException
             Assert.Throws<ArgumentException>(() => service.RenewSubscription(99, 100, 30)); 
         }
+
+        /// <summary>
+        /// Перевіряє, що учасники з простроченою підпискою
+        /// деактивовані та сповіщені.
+        /// </summary>
+        [Fact]
+        public void DeactivateExpiredMembers_ShouldDeactivateAndUpdate_WhenSubscriptionIsExpired()
+        {
+            // Arrange
+            var expiredMember = new Member 
+            { 
+                Id = 1, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(-1) // Підписка закінчилась вчора
+            };
+            var activeMember = new Member 
+            { 
+                Id = 2, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(30) // Ще активна
+            };
+            var allMembers = new List<Member> { expiredMember, activeMember };
+
+            _repo.Setup(r => r.GetAll()).Returns(allMembers);
+            
+            var service = new SubscriptionService(_repo.Object, _payment.Object, _notify.Object);
+
+            // Act
+            service.DeactivateExpiredMembers();
+
+            // Assert
+            Assert.False(expiredMember.IsActive); // Переконуємось, що статус змінився
+            Assert.True(activeMember.IsActive);  // Переконуємось, що статус не змінився
+
+            // Використовуємо It.Is(predicate) для перевірки, що Update викликали саме для деактивованого учасника
+            _repo.Verify(r => r.Update(
+                It.Is<Member>(m => m.Id == expiredMember.Id && m.IsActive == false)), 
+                Times.Once());
+            
+            // Перевіряємо, що сповіщення було надіслано
+            _notify.Verify(n => n.SendNotification("Membership expired", expiredMember.Id), Times.Once());
+            
+            // Перевіряємо, що "активного" учасника не оновлювали і не сповіщали
+            _repo.Verify(r => r.Update(activeMember), Times.Never());
+            _notify.Verify(n => n.SendNotification(It.IsAny<string>(), activeMember.Id), Times.Never());
+        }
+
+        /// <summary>
+        /// Перевіряє, що нічого не відбувається,
+        /// якщо немає учасників з простроченою підпискою.
+        /// </summary>
+        [Fact]
+        public void DeactivateExpiredMembers_ShouldDoNothing_WhenNoMembersAreExpired()
+        {
+            // Arrange
+            var activeMember = new Member { Id = 1, IsActive = true, SubscriptionEnd = DateTime.Now.AddDays(30) };
+            var allMembers = new List<Member> { activeMember };
+
+            _repo.Setup(r => r.GetAll()).Returns(allMembers);
+            
+            var service = new SubscriptionService(_repo.Object, _payment.Object, _notify.Object);
+
+            // Act
+            service.DeactivateExpiredMembers();
+
+            // Assert
+            // Перевіряємо, що жодних оновлень чи сповіщень не було
+            _repo.Verify(r => r.Update(It.IsAny<Member>()), Times.Never());
+            _notify.Verify(n => n.SendNotification(It.IsAny<string>(), It.IsAny<int>()), Times.Never());
+        }
     }
+
 }
