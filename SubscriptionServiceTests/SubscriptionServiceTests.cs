@@ -83,5 +83,51 @@ namespace SubscriptionServiceTests
             // Ми перевіряємо, що при виклику сервісу буде кинуто саме ArgumentException
             Assert.Throws<ArgumentException>(() => service.RenewSubscription(99, 100, 30)); 
         }
+
+        /// <summary>
+        /// Перевіряє, що GetAllActiveMembers повертає лише активних учасників.
+        /// </summary>
+        [Fact]
+        public void GetAllActiveMembers_ShouldReturnOnlyActiveMembers()
+        {
+            // Arrange
+            var activeMember = new Member { Id = 1, Name = "Active User", IsActive = true };
+            var inactiveMember = new Member { Id = 2, Name = "Inactive User", IsActive = false };
+            var allMembers = new List<Member> { activeMember, inactiveMember };
+
+            _repo.Setup(r => r.GetAll()).Returns(allMembers);
+            var service = new MemberService(_repo.Object);
+
+            // Act
+            var result = service.GetAllActiveMembers();
+
+            // Assert
+            Assert.NotEmpty(result); 
+            Assert.Contains(activeMember, result); 
+            Assert.DoesNotContain(inactiveMember, result); 
+            Assert.NotEqual(allMembers.Count, result.Count()); 
+        }
+
+        /// <summary>
+        /// Перевіряє, що GetAllActiveMembers повертає порожню колекцію,
+        /// якщо активних учасників немає.
+        /// </summary>
+        [Fact]
+        public void GetAllActiveMembers_ShouldReturnEmpty_WhenNoActiveMembers()
+        {
+            // Arrange
+            var inactiveMember1 = new Member { Id = 1, IsActive = false };
+            var inactiveMember2 = new Member { Id = 2, IsActive = false };
+            var allMembers = new List<Member> { inactiveMember1, inactiveMember2 };
+
+            _repo.Setup(r => r.GetAll()).Returns(allMembers);
+            var service = new MemberService(_repo.Object);
+
+            // Act
+            var result = service.GetAllActiveMembers();
+
+            // Assert
+            Assert.Empty(result); 
+        }
     }
 }
