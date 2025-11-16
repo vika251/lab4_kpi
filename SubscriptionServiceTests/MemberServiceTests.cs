@@ -14,8 +14,6 @@ namespace SubscriptionServiceTests
     public class MemberServiceTests
     {
         private readonly Mock<IMemberRepository> _repo = new();
-        private readonly Mock<IPaymentService> _payment = new();
-        private readonly Mock<INotificationService> _notify = new(); 
 
         /// <summary>
         /// Перевіряє метод IsActive з різними вхідними даними.
