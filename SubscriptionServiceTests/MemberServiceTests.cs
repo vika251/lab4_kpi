@@ -1,10 +1,13 @@
 ﻿using Moq;
+using Subscription_Service.Models;
+using Subscription_Service.Services;
 using Subscription_Service.Services.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace SubscriptionServiceTests
 {
@@ -12,6 +15,87 @@ namespace SubscriptionServiceTests
     {
         private readonly Mock<IMemberRepository> _repo = new();
         private readonly Mock<IPaymentService> _payment = new();
-        private readonly Mock<INotificationService> _notify = new();
+        private readonly Mock<INotificationService> _notify = new(); 
+
+        /// <summary>
+        /// Перевіряє, що метод IsActive повертає true,
+        /// якщо учасник існує в репозиторії та має статус IsActive = true.
+        /// </summary>
+        [Fact]
+        public void IsActive_ShouldReturnTrue_WhenMemberIsActive()
+        {
+            // Arrange 
+            var member = new Member { Id = 1, IsActive = true };
+            _repo.Setup(r => r.GetById(1)).Returns(member);
+
+            var service = new MemberService(_repo.Object);
+
+            // Act 
+            var result = service.IsActive(1);
+
+            // Assert 
+            Assert.True(result);
+        }
+
+        /// <summary>
+        /// Перевіряє, що метод IsActive повертає false,
+        /// якщо учасник існує, але має статус IsActive = false.
+        /// </summary>
+        [Fact]
+        public void IsActive_ShouldReturnFalse_WhenMemberIsInactive()
+        {
+            // Arrange
+            var member = new Member { Id = 2, IsActive = false };
+            _repo.Setup(r => r.GetById(2)).Returns(member);
+
+            var service = new MemberService(_repo.Object);
+
+            // Act
+            var result = service.IsActive(2);
+
+            // Assert
+            Assert.False(result); 
+        }
+
+        /// <summary>
+        /// Перевіряє, що GetMember повертає правильного учасника,
+        /// якщо він існує.
+        /// </summary>
+        [Fact]
+        public void GetMember_ShouldReturnMember_WhenMemberExists()
+        {
+            // Arrange
+            var expectedMember = new Member { Id = 1, Name = "Test User" };
+            _repo.Setup(r => r.GetById(1)).Returns(expectedMember);
+
+            var service = new MemberService(_repo.Object);
+
+            // Act
+            var actualMember = service.GetMember(1);
+
+            // Assert
+            Assert.NotNull(actualMember);  
+            Assert.Equal(expectedMember.Id, actualMember.Id); 
+            Assert.Equal(expectedMember.Name, actualMember.Name);
+        }
+
+        /// <summary>
+        /// Перевіряє, що GetMember повертає null,
+        /// якщо учасник не знайдений.
+        /// </summary>
+        [Fact]
+        public void GetMember_ShouldReturnNull_WhenMemberDoesNotExist()
+        {
+            // Arrange
+            _repo.Setup(r => r.GetById(99)).Returns((Member?)null);
+
+            var service = new MemberService(_repo.Object);
+
+            // Act
+            var result = service.GetMember(99);
+
+            // Assert
+            Assert.Null(result);
+        }
     }
 }
